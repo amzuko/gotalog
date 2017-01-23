@@ -23,6 +23,14 @@ var cases = []testCase{
 	{"foo(X)?", false, 1},
 	{"               \t\tfoo(X) :-    baz ( X )   .", false, 1},
 	{"foo(bar,baz). \n", false, 1},
+	{`% Transitive closure test from Guo & Gupta
+
+r(X, Y) :- r(X, Z), r(Z, Y).
+r(X, Y) :- p(X, Y), q(Y). %other comment
+p(a, b).  p(b, d).  p(b, c).
+q(b).  q(c).
+r(a, Y)?
+`, false, 8},
 }
 
 func TestParse(t *testing.T) {
