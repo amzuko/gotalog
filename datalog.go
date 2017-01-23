@@ -307,6 +307,9 @@ func (t term) isSafe(c clause) bool {
 // for clarity.
 type database map[string]*predicate
 
+// TODO: we need to somehow intern predicates on the basis of string/int identification,
+// so that multiple clauses referring to the same predicate can reach the same
+// db of clauses.
 func (db database) newPredicate(n string, a int) *predicate {
 
 	p := &predicate{
