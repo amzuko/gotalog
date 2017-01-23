@@ -55,15 +55,6 @@ type predicate struct {
 	primitive func(literal, *subgoal) []literal
 }
 
-func newPredicate(n string, a int) *predicate {
-	return &predicate{
-		Name:      n,
-		Arity:     a,
-		db:        make(map[string]clause),
-		primitive: nil,
-	}
-}
-
 func (p predicate) getID() string {
 	return p.Name + "/" + strconv.Itoa(p.Arity)
 }
@@ -175,7 +166,7 @@ func rename(l literal) literal {
 // literals will create two literals that are structurally equal.
 
 func unify(l literal, other literal) envirionment {
-	if l.pred != other.pred {
+	if l.pred.getID() != other.pred.getID() {
 		return nil
 	}
 	env := envirionment{}
@@ -314,9 +305,24 @@ func (t term) isSafe(c clause) bool {
 // this was used to describe a number of different uses for tables mapping From
 // some string id to some type. TODO: consider renaming other uses of 'database'
 // for clarity.
-type database map[string]predicate
+type database map[string]*predicate
 
-func (db database) insert(pred predicate) {
+func (db database) newPredicate(n string, a int) *predicate {
+
+	p := &predicate{
+		Name:      n,
+		Arity:     a,
+		db:        make(map[string]clause),
+		primitive: nil,
+	}
+	if existing, ok := db[p.getID()]; ok {
+		return existing
+	}
+	db[p.getID()] = p
+	return p
+}
+
+func (db database) insert(pred *predicate) {
 	db[pred.getID()] = pred
 }
 
@@ -336,7 +342,7 @@ func (db database) assert(c clause) error {
 		return fmt.Errorf("cannot assert on primitive predicates")
 	}
 	pred.db[c.getID()] = c
-	db.insert(*pred)
+	db.insert(pred)
 	return nil
 }
 

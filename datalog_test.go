@@ -3,13 +3,13 @@ package gotalog
 import "testing"
 
 func TestAsk(t *testing.T) {
-	parent := newPredicate("parent", 2)
+	db := database{}
+
+	parent := db.newPredicate("parent", 2)
 
 	abby := makeConst("abby")
 	bob := makeConst("bob")
 	charlie := makeConst("charlie")
-
-	db := database{}
 
 	err := db.assert(clause{head: literal{parent, []term{abby, bob}}})
 	if err != nil {
@@ -21,13 +21,13 @@ func TestAsk(t *testing.T) {
 	}
 
 	X := makeVar("X")
-	// results, err := ask(literal{parent, []term{abby, X}})
+	results, err := ask(literal{parent, []term{abby, X}})
 
-	// if len(results.answers) != 2 {
-	// 	t.Fail()
-	// }
+	if len(results.answers) != 2 {
+		t.Fail()
+	}
 
-	sibling := newPredicate("sibling", 2)
+	sibling := db.newPredicate("sibling", 2)
 	Y := makeVar("Y")
 	Z := makeVar("Z")
 
@@ -44,12 +44,11 @@ func TestAsk(t *testing.T) {
 		t.Error(err)
 	}
 
-	results, err := ask(literal{sibling, []term{X, Y}})
+	results, err = ask(literal{sibling, []term{X, Y}})
 	if err != nil {
 		t.Error(err)
 	}
-	// Children are siblings with themselves
-	if len(results.answers) != 3 {
-		t.Fail()
+	if len(results.answers) != 4 {
+		t.Error("Wrong length of results", results)
 	}
 }
