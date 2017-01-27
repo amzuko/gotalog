@@ -106,12 +106,12 @@ q(X)?
 	},
 	pCase{
 		prog: `% path test from Chen & Warren
-edge(a, b). edge(b, c). edge(c, d). edge(d, a).
-path(X, Y) :- edge(X, Y).
-path(X, Y) :- edge(X, Z), path(Z, Y).
-path(X, Y) :- path(X, Z), edge(Z, Y).
-path(X, Y)?
-`,
+	edge(a, b). edge(b, c). edge(c, d). edge(d, a).
+	path(X, Y) :- edge(X, Y).
+	path(X, Y) :- edge(X, Z), path(Z, Y).
+	path(X, Y) :- path(X, Z), edge(Z, Y).
+	path(X, Y)?
+	`,
 		expected: `path(a, a).
 path(a, b).
 path(a, c).
@@ -132,29 +132,29 @@ path(d, d).
 	},
 	pCase{
 		prog: `% Laps Test
-contains(ca, store, rams_couch, rams).
-contains(rams, fetch, rams_couch, will).
-contains(ca, fetch, Name, Watcher) :-
-    contains(ca, store, Name, Owner),
-    contains(Owner, fetch, Name, Watcher).
-trusted(ca).
-permit(User, Priv, Name) :-
-    contains(Auth, Priv, Name, User),
-    trusted(Auth).
-permit(User, Priv, Name)?
-`,
+	contains(ca, store, rams_couch, rams).
+	contains(rams, fetch, rams_couch, will).
+	contains(ca, fetch, Name, Watcher) :-
+	    contains(ca, store, Name, Owner),
+	    contains(Owner, fetch, Name, Watcher).
+	trusted(ca).
+	permit(User, Priv, Name) :-
+	    contains(Auth, Priv, Name, User),
+	    trusted(Auth).
+	permit(User, Priv, Name)?
+	`,
 		expected: `permit(rams, store, rams_couch).
 permit(will, fetch, rams_couch).
 `,
 	},
 	pCase{
 		prog: `abcdefghi(z123456789,
-z1234567890123456789,
-z123456789012345678901234567890123456789,
-z1234567890123456789012345678901234567890123456789012345678901234567890123456789).
+	z1234567890123456789,
+	z123456789012345678901234567890123456789,
+	z1234567890123456789012345678901234567890123456789012345678901234567890123456789).
 
-this_is_a_long_identifier_and_tests_the_scanners_concat_when_read_with_a_small_buffer.
-this_is_a_long_identifier_and_tests_the_scanners_concat_when_read_with_a_small_buffer?`,
+	this_is_a_long_identifier_and_tests_the_scanners_concat_when_read_with_a_small_buffer.
+	this_is_a_long_identifier_and_tests_the_scanners_concat_when_read_with_a_small_buffer?`,
 		expected: `this_is_a_long_identifier_and_tests_the_scanners_concat_when_read_with_a_small_buffer.
 `,
 	},
@@ -184,8 +184,8 @@ path(d, d).
 	},
 	pCase{
 		prog: `true.
-true?
-`,
+	true?
+	`,
 		expected: `true.
 `,
 	},

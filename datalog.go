@@ -78,7 +78,7 @@ func prefixLength(s string) string {
 
 // TODO:cache
 func (l *literal) getID() string {
-	s := l.pred.Name + "/" + strconv.Itoa(l.pred.Arity)
+	s := l.pred.getID()
 	for _, v := range l.terms {
 		s = s + prefixLength(v.value)
 	}
@@ -468,7 +468,7 @@ func (g goals) fact(sg *subgoal, l literal) {
 func (g goals) rule(subgoal *subgoal, c *clause, selected literal) {
 	sg := g.find(selected)
 	if sg != nil {
-		sg.waiters = append(sg.waiters, waiter{goal: sg, c: c})
+		sg.waiters = append(sg.waiters, waiter{goal: subgoal, c: c})
 		todo := make([]*clause, 0)
 		for _, fact := range sg.facts {
 			resolvent := resolve(c, fact)
