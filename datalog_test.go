@@ -189,6 +189,14 @@ path(d, d).
 		expected: `true.
 `,
 	},
+	pCase{
+		prog: `foo(a,b).
+    foo(b,c).
+    foo(a,b)~
+    foo(X,Y)?`,
+		expected: `foo(b, c).
+`,
+	},
 }
 
 func TestPrograms(t *testing.T) {

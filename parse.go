@@ -13,12 +13,18 @@ type makeLiteral struct {
 	pName string
 	terms []term
 }
+type commandType int
+
+const (
+	assert commandType = iota
+	query
+	retract
+)
 
 type datalogCommand struct {
-	head makeLiteral
-	body []makeLiteral
-	// If isQuery is true, head is interpreted as
-	isQuery bool
+	head        makeLiteral
+	body        []makeLiteral
+	commandType commandType
 }
 
 func buildLiteral(ml makeLiteral, db *database) literal {
@@ -30,19 +36,32 @@ func buildLiteral(ml makeLiteral, db *database) literal {
 
 func apply(cmd datalogCommand, db *database) (*result, error) {
 	head := buildLiteral(cmd.head, db)
-	if cmd.isQuery {
+	switch cmd.commandType {
+	case assert:
+		body := make([]literal, len(cmd.body))
+		for i, ml := range cmd.body {
+			body[i] = buildLiteral(ml, db)
+		}
+		err := db.assert(clause{
+			head: head,
+			body: body,
+		})
+		return nil, err
+	case query:
 		res, err := ask(head)
 		return &res, err
+	case retract:
+		body := make([]literal, len(cmd.body))
+		for i, ml := range cmd.body {
+			body[i] = buildLiteral(ml, db)
+		}
+		db.retract(clause{
+			head: head,
+			body: body,
+		}) // really, no errors can happen?
+		return nil, nil
 	}
-	body := make([]literal, len(cmd.body))
-	for i, ml := range cmd.body {
-		body[i] = buildLiteral(ml, db)
-	}
-	err := db.assert(clause{
-		head: head,
-		body: body,
-	})
-	return nil, err
+	return nil, fmt.Errorf("bogus command - this should never happen")
 }
 
 func applyAll(cmds []datalogCommand, db *database) (results []result, err error) {
@@ -80,6 +99,23 @@ func isUpperCase(ch rune) bool {
 
 func isLetter(ch rune) bool {
 	return isLowerCase(ch) || isUpperCase(ch)
+}
+
+func isTerminal(ch rune) bool {
+	return ch == '?' || ch == '.' || ch == '~'
+}
+
+func commandForTerminal(ch rune) commandType {
+	switch ch {
+	case '.':
+		return assert
+	case '?':
+		return query
+	case '~':
+		return retract
+	default:
+		panic("invalid terminal rune.")
+	}
 }
 
 func isAllowedBodyRune(ch rune) bool {
@@ -175,7 +211,7 @@ func (s scanner) scanLiteral() (lit makeLiteral, err error) {
 		return lit, err
 	}
 	s.r.UnreadRune()
-	if ch == '.' || ch == '?' {
+	if isTerminal(ch) {
 		return
 	}
 
@@ -220,12 +256,9 @@ func (s scanner) scanCommand() (cmd datalogCommand, err error) {
 	if err != nil {
 		return cmd, err
 	}
-	if ch == '?' {
-		cmd.isQuery = true
-		return
-	}
 
-	if ch == '.' {
+	if isTerminal(ch) {
+		cmd.commandType = commandForTerminal(ch)
 		return
 	}
 

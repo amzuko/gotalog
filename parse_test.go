@@ -15,6 +15,7 @@ var cases = []testCase{
 	{"foo(bar,baz)?", false, 1},
 	{"foo(bar,X)?", false, 1},
 	{"foo(X,bar)?", false, 1},
+	{"foo(bar,baz)~", false, 1},
 	{"foo(bar,baz) :- quux(bar, baz).", false, 1},
 	{"foo(bar,baz) :- quux(bar, baz), woz(bar).", false, 1},
 	{"foo(bar).foo(baz).quux(bar,baz).", false, 3},
