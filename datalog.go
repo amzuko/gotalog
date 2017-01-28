@@ -334,6 +334,8 @@ func (db database) remove(pred predicate) predicate {
 	return pred
 }
 
+// assertions should only be made for clauses' whose
+// predicates originate within the same database.
 func (db database) assert(c clause) error {
 	if !isSafe(c) {
 		return fmt.Errorf("cannot assert unsafe clauses")
@@ -345,7 +347,6 @@ func (db database) assert(c clause) error {
 		return fmt.Errorf("cannot assert on primitive predicates")
 	}
 	pred.db[c.getID()] = c
-	db.insert(pred)
 	return nil
 }
 
