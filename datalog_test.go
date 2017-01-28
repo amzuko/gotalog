@@ -59,28 +59,6 @@ func TestAsk(t *testing.T) {
 	}
 }
 
-// ToString reformats results for display.
-// Coincidentally, it also generates valid datalog.
-func ToString(results []Result) string {
-	str := ""
-	for _, result := range results {
-		for _, terms := range result.Answers {
-			str += result.Name
-			if len(terms) > 0 {
-				str += "("
-				termStrings := make([]string, len(terms))
-				for i, t := range terms {
-					termStrings[i] = t.value
-				}
-				str += strings.Join(termStrings, ", ")
-				str += ")"
-			}
-			str += ".\n"
-		}
-	}
-	return str
-}
-
 func parseApplyExecute(t *testing.T, prog string) string {
 	cmds, err := Parse(strings.NewReader(prog))
 	if err != nil {

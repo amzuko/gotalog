@@ -1,6 +1,9 @@
 package gotalog
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // Database holds and generates state for asserted facts and rules.
 // We're mirroring the original implementation's use of 'database'. Unfortunately,
@@ -98,4 +101,26 @@ func ApplyAll(cmds []DatalogCommand, db Database) (results []Result, err error) 
 		}
 	}
 	return
+}
+
+// ToString reformats results for display.
+// Coincidentally, it also generates valid datalog.
+func ToString(results []Result) string {
+	str := ""
+	for _, result := range results {
+		for _, terms := range result.Answers {
+			str += result.Name
+			if len(terms) > 0 {
+				str += "("
+				termStrings := make([]string, len(terms))
+				for i, t := range terms {
+					termStrings[i] = t.value
+				}
+				str += strings.Join(termStrings, ", ")
+				str += ")"
+			}
+			str += ".\n"
+		}
+	}
+	return str
 }

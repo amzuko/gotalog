@@ -32,6 +32,11 @@ func (mem memClauseStore) iterator() (chan clause, error) {
 
 type memDatabase map[string]*predicate
 
+// NewMemDatabase constructs a new in-memory database.
+func NewMemDatabase() memDatabase {
+	return memDatabase{}
+}
+
 // TODO: we need to somehow intern predicates on the basis of string/int identification,
 // so that multiple clauses referring to the same predicate can reach the same
 // db of clauses.
