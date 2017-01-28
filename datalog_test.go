@@ -256,3 +256,9 @@ func BenchmarkClique(b *testing.B) {
 		checkFile("tests/clique100.pl")
 	}
 }
+
+func BenchmarkInduction(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		checkFile("tests/induction100.pl")
+	}
+}

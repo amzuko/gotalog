@@ -47,31 +47,33 @@ func NewMemDatabase() *memDatabase {
 // so that multiple clauses referring to the same predicate can reach the same
 // db of clauses.
 func (db *memDatabase) newPredicate(n string, a int) *predicate {
+	id := predicateID(n, a)
+	if existing, ok := db.predicates[id]; ok {
+		return existing
+	}
 
 	p := &predicate{
 		Name:      n,
 		Arity:     a,
 		primitive: nil,
-	}
-	if existing, ok := db.predicates[p.getID()]; ok {
-		return existing
+		id:        id,
 	}
 
 	p.clauses = func() (chan clause, error) {
-		return db.clauses[p.getID()].iterator()
+		return db.clauses[p.id].iterator()
 	}
 
-	db.predicates[p.getID()] = p
-	db.clauses[p.getID()] = memClauseStore{}
+	db.predicates[p.id] = p
+	db.clauses[p.id] = memClauseStore{}
 	return p
 }
 
 func (db *memDatabase) insert(pred *predicate) {
-	db.predicates[pred.getID()] = pred
+	db.predicates[pred.id] = pred
 }
 
 func (db *memDatabase) remove(pred predicate) predicate {
-	delete(db.predicates, pred.getID())
+	delete(db.predicates, pred.id)
 	return pred
 }
 
@@ -88,19 +90,19 @@ func (db memDatabase) assert(c clause) error {
 		return fmt.Errorf("cannot assert on primitive predicates")
 	}
 
-	return db.clauses[pred.getID()].add(c)
+	return db.clauses[pred.id].add(c)
 }
 
 func (db memDatabase) retract(c clause) error {
 	pred := c.head.pred
-	err := db.clauses[pred.getID()].delete(c)
+	err := db.clauses[pred.id].delete(c)
 	if err != nil {
 		// This leads to garbage in the predicate's database.
 		return err
 	}
 
 	// If a predicate has no clauses associated with it, remove it from the db.
-	size, err := db.clauses[pred.getID()].size()
+	size, err := db.clauses[pred.id].size()
 	if err != nil {
 		// Likewise, we end up with garbage if this happens.
 		return err

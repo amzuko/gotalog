@@ -53,10 +53,11 @@ type predicate struct {
 	Arity     int
 	clauses   func() (chan clause, error)
 	primitive func(literal, *subgoal) []literal
+	id        string
 }
 
-func (p predicate) getID() string {
-	return p.Name + "/" + strconv.Itoa(p.Arity)
+func predicateID(name string, arity int) string {
+	return name + "/" + strconv.Itoa(arity)
 }
 
 type literal struct {
@@ -69,7 +70,7 @@ func (l literal) String() string {
 	for i, t := range l.terms {
 		values[i] = t.getID()
 	}
-	return l.pred.getID() + "(" + strings.Join(values, ", ") + ")"
+	return l.pred.id + "(" + strings.Join(values, ", ") + ")"
 }
 
 func prefixLength(s string) string {
@@ -78,7 +79,7 @@ func prefixLength(s string) string {
 
 // TODO:cache
 func (l *literal) getID() string {
-	s := l.pred.getID()
+	s := l.pred.id
 	for _, v := range l.terms {
 		s = s + prefixLength(v.value)
 	}
@@ -97,7 +98,7 @@ func (l *literal) getID() string {
 // TODO:cache in the literal
 func (l literal) getTag() string {
 	mapping := make(map[term]string)
-	tag := prefixLength(l.pred.getID())
+	tag := prefixLength(l.pred.id)
 	for i, t := range l.terms {
 		tag = tag + prefixLength(t.getTag(i, mapping))
 	}
@@ -166,7 +167,7 @@ func rename(l literal) literal {
 // literals will create two literals that are structurally equal.
 
 func unify(l literal, other literal) envirionment {
-	if l.pred.getID() != other.pred.getID() {
+	if l.pred.id != other.pred.id {
 		return nil
 	}
 	env := envirionment{}
