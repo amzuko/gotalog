@@ -46,12 +46,19 @@ func makeConst(value string) term {
 
 type envirionment map[string]term
 
+type clauseStore interface {
+	set(string, clause) error
+	delete(string) error
+	size() (int, error)
+	iterator() (chan clause, error)
+}
+
 // Predicate has name, arity, and optionally
 // a function implementing a primitive
 type predicate struct {
 	Name      string
 	Arity     int
-	db        map[string]clause
+	db        clauseStore
 	primitive func(literal, *subgoal) []literal
 }
 
@@ -307,6 +314,34 @@ func (t term) isSafe(c clause) bool {
 // for clarity.
 type database map[string]*predicate
 
+type memClauseStore map[string]clause
+
+func (mem memClauseStore) set(key string, c clause) error {
+	mem[key] = c
+	return nil
+}
+
+func (mem memClauseStore) delete(key string) error {
+	delete(mem, key)
+	return nil
+}
+
+func (mem memClauseStore) size() (int, error) {
+	return len(mem), nil
+}
+
+func (mem memClauseStore) iterator() (chan clause, error) {
+	clauses := make(chan clause, 1)
+	go func() {
+		for _, c := range mem {
+			clauses <- c
+		}
+		close(clauses)
+	}()
+	return clauses, nil
+
+}
+
 // TODO: we need to somehow intern predicates on the basis of string/int identification,
 // so that multiple clauses referring to the same predicate can reach the same
 // db of clauses.
@@ -315,7 +350,7 @@ func (db database) newPredicate(n string, a int) *predicate {
 	p := &predicate{
 		Name:      n,
 		Arity:     a,
-		db:        make(map[string]clause),
+		db:        memClauseStore{},
 		primitive: nil,
 	}
 	if existing, ok := db[p.getID()]; ok {
@@ -346,18 +381,28 @@ func (db database) assert(c clause) error {
 	if pred.primitive != nil {
 		return fmt.Errorf("cannot assert on primitive predicates")
 	}
-	pred.db[c.getID()] = c
-	return nil
+	return pred.db.set(c.getID(), c)
 }
 
-func (db database) retract(c clause) {
+func (db database) retract(c clause) error {
 	pred := c.head.pred
-	delete(pred.db, c.getID())
+	err := pred.db.delete(c.getID())
+	if err != nil {
+		// This leads to garbage in the predicate's database.
+		return err
+	}
 
 	// If a predicate has no clauses associated with it, remove it from the db.
-	if len(pred.db) == 0 {
+	size, err := pred.db.size()
+	if err != nil {
+		// Likewise, we end up with garbage if this happens.
+		return err
+	}
+
+	if size == 0 {
 		db.remove(*pred)
 	}
+	return nil
 }
 
 func (db database) copy() database {
@@ -500,12 +545,17 @@ func (g goals) addClause(sg *subgoal, c *clause) {
 	}
 }
 
-func (g goals) search(sg *subgoal) {
+func (g goals) search(sg *subgoal) error {
 	l := sg.literal
 	if l.pred.primitive != nil {
 		l.pred.primitive(l, sg)
 	}
-	for _, c := range l.pred.db {
+
+	clauses, err := l.pred.db.iterator()
+	if err != nil {
+		return err
+	}
+	for c := range clauses {
 		renamed := renameClause(c)
 		env := unify(l, renamed.head)
 		if env != nil {
@@ -513,6 +563,7 @@ func (g goals) search(sg *subgoal) {
 			g.addClause(sg, &substituted)
 		}
 	}
+	return nil
 }
 
 type result struct {
