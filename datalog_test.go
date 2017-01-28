@@ -5,7 +5,7 @@ import "strings"
 import "bufio"
 
 func TestAsk(t *testing.T) {
-	db := database{}
+	db := memDatabase{}
 
 	parent := db.newPredicate("parent", 2)
 
@@ -61,7 +61,7 @@ func parseApplyExecute(t *testing.T, prog string) string {
 		t.Errorf("Error parsing: %s", err)
 		t.Fail()
 	}
-	db := database{}
+	db := memDatabase{}
 	results, err := applyAll(cmds, &db)
 
 	if err != nil {
