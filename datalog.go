@@ -405,18 +405,6 @@ func (db database) retract(c clause) error {
 	return nil
 }
 
-func (db database) copy() database {
-	var newDB database
-	for k, v := range db {
-		newDB[k] = v
-	}
-	return newDB
-}
-
-func (db database) revert(clone database) {
-	db = clone.copy()
-}
-
 type goals map[string]*subgoal
 
 func (g goals) String() string {
