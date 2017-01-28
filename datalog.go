@@ -51,7 +51,7 @@ type envirionment map[string]term
 type predicate struct {
 	Name      string
 	Arity     int
-	clauses   func() (chan clause, error)
+	clauses   func() []clause
 	primitive func(literal, *subgoal) []literal
 	id        string
 }
@@ -436,11 +436,8 @@ func (g goals) search(sg *subgoal) error {
 		l.pred.primitive(l, sg)
 	}
 
-	clauses, err := l.pred.clauses()
-	if err != nil {
-		return err
-	}
-	for c := range clauses {
+	clauses := l.pred.clauses()
+	for _, c := range clauses {
 		renamed := renameClause(c)
 		env := unify(l, renamed.head)
 		if env != nil {

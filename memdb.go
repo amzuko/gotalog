@@ -18,15 +18,12 @@ func (mem memClauseStore) size() (int, error) {
 	return len(mem), nil
 }
 
-func (mem memClauseStore) iterator() (chan clause, error) {
-	clauses := make(chan clause, 1)
-	go func() {
-		for _, c := range mem {
-			clauses <- c
-		}
-		close(clauses)
-	}()
-	return clauses, nil
+func (mem memClauseStore) clauses() []clause {
+	clauses := make([]clause, 0, len(mem))
+	for _, c := range mem {
+		clauses = append(clauses, c)
+	}
+	return clauses
 
 }
 
@@ -36,7 +33,7 @@ type memDatabase struct {
 }
 
 // NewMemDatabase constructs a new in-memory database.
-func NewMemDatabase() *memDatabase {
+func NewMemDatabase() Database {
 	return &memDatabase{
 		predicates: make(map[string]*predicate),
 		clauses:    make(map[string]memClauseStore),
@@ -59,8 +56,8 @@ func (db *memDatabase) newPredicate(n string, a int) *predicate {
 		id:        id,
 	}
 
-	p.clauses = func() (chan clause, error) {
-		return db.clauses[p.id].iterator()
+	p.clauses = func() []clause {
+		return db.clauses[p.id].clauses()
 	}
 
 	db.predicates[p.id] = p
