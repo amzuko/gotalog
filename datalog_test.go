@@ -9,7 +9,7 @@ import (
 )
 
 func TestAsk(t *testing.T) {
-	db := memDatabase{}
+	db := NewMemDatabase()
 
 	parent := db.newPredicate("parent", 2)
 
@@ -65,7 +65,7 @@ func parseApplyExecute(t *testing.T, prog string) string {
 		t.Errorf("Error parsing: %s", err)
 		t.Fail()
 	}
-	db := memDatabase{}
+	db := NewMemDatabase()
 	results, err := ApplyAll(cmds, db)
 
 	if err != nil {
@@ -225,7 +225,7 @@ func checkFile(filename string) error {
 	if err != nil {
 		return err
 	}
-	db := memDatabase{}
+	db := NewMemDatabase()
 	results, err := ApplyAll(cmds, db)
 	if err != nil {
 		return err

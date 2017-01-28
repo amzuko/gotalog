@@ -51,7 +51,7 @@ type envirionment map[string]term
 type predicate struct {
 	Name      string
 	Arity     int
-	db        clauseStore
+	clauses   func() (chan clause, error)
 	primitive func(literal, *subgoal) []literal
 }
 
@@ -435,7 +435,7 @@ func (g goals) search(sg *subgoal) error {
 		l.pred.primitive(l, sg)
 	}
 
-	clauses, err := l.pred.db.iterator()
+	clauses, err := l.pred.clauses()
 	if err != nil {
 		return err
 	}

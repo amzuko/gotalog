@@ -16,13 +16,6 @@ type Database interface {
 	retract(c clause) error
 }
 
-type clauseStore interface {
-	set(string, clause) error
-	delete(string) error
-	size() (int, error)
-	iterator() (chan clause, error)
-}
-
 // TODO: consider whether this should actually be the public API,
 // rather than the assert/search api?
 type makeLiteral struct {
