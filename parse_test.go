@@ -36,7 +36,7 @@ r(a, Y)?
 
 func TestParse(t *testing.T) {
 	for i, v := range cases {
-		cmds, err := parse(strings.NewReader(v.s))
+		cmds, err := Parse(strings.NewReader(v.s))
 		if (err != nil) != v.shouldFail {
 			t.Errorf("Case %v: Expected success: %v, got error: %v", i, v.shouldFail, err)
 		}

@@ -7,76 +7,6 @@ import (
 	"unicode/utf8"
 )
 
-// TODO: consider whether this should actually be the public API,
-// rather than the assert/search api?
-type makeLiteral struct {
-	pName string
-	terms []term
-}
-type commandType int
-
-const (
-	assert commandType = iota
-	query
-	retract
-)
-
-type datalogCommand struct {
-	head        makeLiteral
-	body        []makeLiteral
-	commandType commandType
-}
-
-func buildLiteral(ml makeLiteral, db *database) literal {
-	return literal{
-		pred:  db.newPredicate(ml.pName, len(ml.terms)),
-		terms: ml.terms,
-	}
-}
-
-func apply(cmd datalogCommand, db *database) (*result, error) {
-	head := buildLiteral(cmd.head, db)
-	switch cmd.commandType {
-	case assert:
-		body := make([]literal, len(cmd.body))
-		for i, ml := range cmd.body {
-			body[i] = buildLiteral(ml, db)
-		}
-		err := db.assert(clause{
-			head: head,
-			body: body,
-		})
-		return nil, err
-	case query:
-		res, err := ask(head)
-		return &res, err
-	case retract:
-		body := make([]literal, len(cmd.body))
-		for i, ml := range cmd.body {
-			body[i] = buildLiteral(ml, db)
-		}
-		db.retract(clause{
-			head: head,
-			body: body,
-		}) // really, no errors can happen?
-		return nil, nil
-	}
-	return nil, fmt.Errorf("bogus command - this should never happen")
-}
-
-func applyAll(cmds []datalogCommand, db *database) (results []result, err error) {
-	for _, cmd := range cmds {
-		res, err := apply(cmd, db)
-		if err != nil {
-			return results, err
-		}
-		if res != nil {
-			results = append(results, *res)
-		}
-	}
-	return
-}
-
 type scanner struct {
 	r *bufio.Reader
 }
@@ -95,6 +25,10 @@ func isLowerCase(ch rune) bool {
 
 func isUpperCase(ch rune) bool {
 	return (ch >= 'A' && ch <= 'Z')
+}
+
+func isNumber(ch rune) bool {
+	return (ch >= '0' && ch <= '9')
 }
 
 func isLetter(ch rune) bool {
@@ -119,8 +53,8 @@ func commandForTerminal(ch rune) commandType {
 }
 
 func isAllowedBodyRune(ch rune) bool {
-	return (ch >= '0' && ch <= '9') ||
-		isLetter(ch) ||
+	return isLetter(ch) ||
+		isNumber(ch) ||
 		(ch == '_' || ch == '-')
 }
 
@@ -163,8 +97,8 @@ func (s scanner) consumeWhitespace() {
 func (s scanner) scanIdentifier() (str string, err error) {
 	s.consumeWhitespace()
 	ch, _, err := s.r.ReadRune()
-	if !isLetter(ch) {
-		return str, fmt.Errorf("Expected a term composed of letters and numbers, but got %v", string(ch))
+	if !isLetter(ch) && !isNumber(ch) {
+		return str, fmt.Errorf("Expected a term startign with a letter or number, but got %v", string(ch))
 	}
 	str = str + string(ch)
 	for {
@@ -186,7 +120,7 @@ func (s scanner) scanTerm() (t term, err error) {
 	}
 	leading, _ := utf8.DecodeRuneInString(t.value)
 
-	if isLowerCase(leading) {
+	if !isUpperCase(leading) {
 		t.isConstant = true
 	}
 	return
@@ -244,7 +178,7 @@ func (s scanner) scanLiteral() (lit makeLiteral, err error) {
 	return
 }
 
-func (s scanner) scanCommand() (cmd datalogCommand, err error) {
+func (s scanner) scanCommand() (cmd DatalogCommand, err error) {
 	s.consumeWhitespace()
 	cmd.head, err = s.scanLiteral()
 	if err != nil {
@@ -299,8 +233,8 @@ func (s scanner) scanCommand() (cmd datalogCommand, err error) {
 	}
 }
 
-func (s scanner) scanCommands() ([]datalogCommand, error) {
-	commands := make([]datalogCommand, 0)
+func (s scanner) scanCommands() ([]DatalogCommand, error) {
+	commands := make([]DatalogCommand, 0)
 	for {
 		c, err := s.scanCommand()
 		if err != nil {
@@ -318,7 +252,11 @@ func (s scanner) scanCommands() ([]datalogCommand, error) {
 	}
 }
 
-func parse(input io.Reader) ([]datalogCommand, error) {
+// Parse consumes a reader, producing a slice of datalogCommands.
+// Interestingly, we should not actually need to read all of the commands
+// into memory before we start executing them.
+// TODO: consider modifying this to return a channel.
+func Parse(input io.Reader) ([]DatalogCommand, error) {
 	s := newScanner(input)
 	return s.scanCommands()
 }

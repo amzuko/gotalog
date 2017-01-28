@@ -1,8 +1,12 @@
 package gotalog
 
-import "testing"
-import "strings"
-import "bufio"
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
+	"testing"
+)
 
 func TestAsk(t *testing.T) {
 	db := memDatabase{}
@@ -25,7 +29,7 @@ func TestAsk(t *testing.T) {
 	X := makeVar("X")
 	results, err := ask(literal{parent, []term{abby, X}})
 
-	if len(results.answers) != 2 {
+	if len(results.Answers) != 2 {
 		t.Fail()
 	}
 
@@ -50,28 +54,18 @@ func TestAsk(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if len(results.answers) != 4 {
+	if len(results.Answers) != 4 {
 		t.Error("Wrong length of results", results)
 	}
 }
 
-func parseApplyExecute(t *testing.T, prog string) string {
-	cmds, err := parse(strings.NewReader(prog))
-	if err != nil {
-		t.Errorf("Error parsing: %s", err)
-		t.Fail()
-	}
-	db := memDatabase{}
-	results, err := applyAll(cmds, &db)
-
-	if err != nil {
-		t.Error(err)
-		t.Fail()
-	}
+// ToString reformats results for display.
+// Coincidentally, it also generates valid datalog.
+func ToString(results []Result) string {
 	str := ""
 	for _, result := range results {
-		for _, terms := range result.answers {
-			str += result.name
+		for _, terms := range result.Answers {
+			str += result.Name
 			if len(terms) > 0 {
 				str += "("
 				termStrings := make([]string, len(terms))
@@ -85,6 +79,22 @@ func parseApplyExecute(t *testing.T, prog string) string {
 		}
 	}
 	return str
+}
+
+func parseApplyExecute(t *testing.T, prog string) string {
+	cmds, err := Parse(strings.NewReader(prog))
+	if err != nil {
+		t.Errorf("Error parsing: %s", err)
+		t.Fail()
+	}
+	db := memDatabase{}
+	results, err := ApplyAll(cmds, db)
+
+	if err != nil {
+		t.Error(err)
+		t.Fail()
+	}
+	return ToString(results)
 }
 
 type pCase struct {
@@ -216,5 +226,55 @@ func TestPrograms(t *testing.T) {
 				t.Errorf("unexpected solution %s", s)
 			}
 		}
+	}
+}
+
+// These tests come from https://github.com/c-cube/datalog
+var files = []string{
+	"tests/clique10.pl",
+	"tests/clique100.pl",
+	"tests/clique200.pl",
+	"tests/clique500.pl",
+	"tests/clique1000.pl",
+}
+
+func checkFile(filename string) error {
+	f, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	cmds, err := Parse(f)
+	if err != nil {
+		return err
+	}
+	db := memDatabase{}
+	results, err := ApplyAll(cmds, db)
+	if err != nil {
+		return err
+	}
+	if len(results) != 1 {
+		return fmt.Errorf("expected a single result")
+	}
+	if len(results[0].Answers) != 1 {
+		return fmt.Errorf("expected a single fact, but got %v", ToString(results))
+	}
+	return nil
+}
+
+func TestFiles(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+	}
+	for _, filename := range files {
+		err := checkFile(filename)
+		if err != nil {
+			t.Error(err)
+		}
+	}
+}
+
+func BenchmarkClique(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		checkFile("tests/clique100.pl")
 	}
 }

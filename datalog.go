@@ -46,13 +46,6 @@ func makeConst(value string) term {
 
 type envirionment map[string]term
 
-type clauseStore interface {
-	set(string, clause) error
-	delete(string) error
-	size() (int, error)
-	iterator() (chan clause, error)
-}
-
 // Predicate has name, arity, and optionally
 // a function implementing a primitive
 type predicate struct {
@@ -308,16 +301,6 @@ func (t term) isSafe(c clause) bool {
 	return false
 }
 
-// We're mirroring the original implementation's use of 'database'. Unfortunately,
-// this was used to describe a number of different uses for tables mapping From
-// some string id to some type. TODO: consider renaming other uses of 'database'
-// for clarity.
-type database interface {
-	newPredicate(n string, a int) *predicate
-	assert(c clause) error
-	retract(c clause) error
-}
-
 type goals map[string]*subgoal
 
 func (g goals) String() string {
@@ -467,13 +450,7 @@ func (g goals) search(sg *subgoal) error {
 	return nil
 }
 
-type result struct {
-	name    string
-	arity   int
-	answers [][]term
-}
-
-func ask(l literal) (result, error) {
+func ask(l literal) (Result, error) {
 	subgoals := goals{}
 	sg := newSubGoal(l)
 	subgoals.merge(sg)
@@ -484,11 +461,11 @@ func ask(l literal) (result, error) {
 		for _, l := range sg.facts {
 			answers = append(answers, l.terms)
 		}
-		return result{
-			name:    l.pred.Name,
-			arity:   l.pred.Arity,
-			answers: answers,
+		return Result{
+			Name:    l.pred.Name,
+			Arity:   l.pred.Arity,
+			Answers: answers,
 		}, nil
 	}
-	return result{}, fmt.Errorf("no results found")
+	return Result{}, fmt.Errorf("no results found")
 }
