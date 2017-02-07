@@ -3,6 +3,7 @@ package gotalog
 import (
 	"bufio"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -59,13 +60,12 @@ func TestAsk(t *testing.T) {
 	}
 }
 
-func parseApplyExecute(t *testing.T, prog string) string {
+func parseApplyExecute(t *testing.T, prog string, db Database) string {
 	cmds, err := Parse(strings.NewReader(prog))
 	if err != nil {
 		t.Errorf("Error parsing: %s", err)
 		t.Fail()
 	}
-	db := NewMemDatabase()
 	results, err := ApplyAll(cmds, db)
 
 	if err != nil {
@@ -187,9 +187,9 @@ path(d, d).
 	},
 }
 
-func TestPrograms(t *testing.T) {
+func interfaceTest(t *testing.T, newDB func() Database) {
 	for _, pCase := range programCases {
-		result := parseApplyExecute(t, pCase.prog)
+		result := parseApplyExecute(t, pCase.prog, newDB())
 		if len(result) != len(pCase.expected) {
 			t.Errorf("Different string lengths. Got:\n%v\nExpected:\n%v\n", result, pCase.expected)
 		}
@@ -205,6 +205,24 @@ func TestPrograms(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestMemDBInterface(t *testing.T) {
+	interfaceTest(t, NewMemDatabase)
+}
+
+func TestDiskLogDBInterface(t *testing.T) {
+	interfaceTest(t, func() Database {
+		f, err := ioutil.TempFile("", "logdbtests")
+		if err != nil {
+			panic(err)
+		}
+		db, err := NewDiskLogDB(f, NewMemDatabase())
+		if err != nil {
+			panic(err)
+		}
+		return db
+	})
 }
 
 // These tests come from https://github.com/c-cube/datalog

@@ -23,6 +23,7 @@ var cases = []testCase{
 	{"foo(bar,baz) :- quux(bar, baz), woz(bar)?", true, 1},
 	{"foo(X)?", false, 1},
 	{"               \t\tfoo(X) :-    baz ( X )   .", false, 1},
+	{"", false, 0},
 	{"foo(bar,baz). \n", false, 1},
 	{`% Transitive closure test from Guo & Gupta
 

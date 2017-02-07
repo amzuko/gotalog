@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"strings"
 	"unicode/utf8"
 )
 
@@ -236,12 +237,6 @@ func (s scanner) scanCommand() (cmd DatalogCommand, err error) {
 func (s scanner) scanCommands() ([]DatalogCommand, error) {
 	commands := make([]DatalogCommand, 0)
 	for {
-		c, err := s.scanCommand()
-		if err != nil {
-			return nil, err
-		}
-		commands = append(commands, c)
-
 		s.consumeWhitespace()
 		ch, _, err := s.r.ReadRune()
 
@@ -249,6 +244,12 @@ func (s scanner) scanCommands() ([]DatalogCommand, error) {
 			return commands, nil
 		}
 		s.r.UnreadRune()
+
+		c, err := s.scanCommand()
+		if err != nil {
+			return nil, err
+		}
+		commands = append(commands, c)
 	}
 }
 
@@ -259,4 +260,65 @@ func (s scanner) scanCommands() ([]DatalogCommand, error) {
 func Parse(input io.Reader) ([]DatalogCommand, error) {
 	s := newScanner(input)
 	return s.scanCommands()
+}
+
+// Should we instead write commands back to disk,
+// and focus on providing utility methods to convert clauses back to commands?
+// TODO:consider this.
+func writeLiteral(w io.Writer, l *literal) error {
+	_, err := io.WriteString(w, l.pred.Name)
+	if err != nil {
+		return err
+	}
+	if l.pred.Arity > 0 {
+		_, err := io.WriteString(w, "(")
+		if err != nil {
+			return err
+		}
+		strs := make([]string, len(l.terms))
+		for i, t := range l.terms {
+			strs[i] = t.value
+		}
+		_, err = io.WriteString(w, strings.Join(strs, ", "))
+		if err != nil {
+			return err
+		}
+
+		_, err = io.WriteString(w, ")")
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func writeClause(w io.Writer, c *clause, t commandType) error {
+	err := writeLiteral(w, &c.head)
+	if err != nil {
+		return err
+	}
+	if len(c.body) > 0 {
+		_, err := io.WriteString(w, " :- ")
+		for i, l := range c.body {
+			if i > 0 {
+				_, err := io.WriteString(w, ", ")
+				if err != nil {
+					return err
+				}
+			}
+			err = writeLiteral(w, &l)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	switch t {
+	case assert:
+		_, err = io.WriteString(w, ".\n")
+	case query:
+		_, err = io.WriteString(w, "?\n")
+	case retract:
+		_, err = io.WriteString(w, "~\n")
+	}
+	return err
 }
