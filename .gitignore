@@ -1,2 +1,4 @@
 tests/*.py
 cli/cli
+*.test
+*.out
