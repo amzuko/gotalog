@@ -1,7 +1,7 @@
 package gotalog
 
 import "strconv"
-import "fmt"
+
 import "strings"
 
 // Term is an inerface implemented by variables
@@ -448,7 +448,7 @@ func (g goals) search(sg *subgoal) error {
 	return nil
 }
 
-func ask(l literal) (Result, error) {
+func ask(l literal) Result {
 	subgoals := goals{}
 	sg := newSubGoal(l)
 	subgoals.merge(sg)
@@ -463,7 +463,7 @@ func ask(l literal) (Result, error) {
 			Name:    l.pred.Name,
 			Arity:   l.pred.Arity,
 			Answers: answers,
-		}, nil
+		}
 	}
-	return Result{}, fmt.Errorf("no results found")
+	return Result{}
 }

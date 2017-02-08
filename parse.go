@@ -234,32 +234,60 @@ func (s scanner) scanCommand() (cmd DatalogCommand, err error) {
 	}
 }
 
-func (s scanner) scanCommands() ([]DatalogCommand, error) {
+func (s scanner) scanOneCommand() (DatalogCommand, bool, error) {
+	s.consumeWhitespace()
+	ch, _, err := s.r.ReadRune()
+
+	if ch == eof || err != nil {
+		return DatalogCommand{}, true, nil
+	}
+	s.r.UnreadRune()
+
+	c, err := s.scanCommand()
+	return c, false, err
+}
+
+// Parse consumes a reader, producing a slice of datalogCommands.
+func Parse(input io.Reader) ([]DatalogCommand, error) {
+	s := newScanner(input)
+
 	commands := make([]DatalogCommand, 0)
+
 	for {
-		s.consumeWhitespace()
-		ch, _, err := s.r.ReadRune()
-
-		if ch == eof || err != nil {
-			return commands, nil
-		}
-		s.r.UnreadRune()
-
-		c, err := s.scanCommand()
-		if err != nil {
-			return nil, err
+		c, finished, err := s.scanOneCommand()
+		if err != nil || finished {
+			return commands, err
 		}
 		commands = append(commands, c)
 	}
 }
 
-// Parse consumes a reader, producing a slice of datalogCommands.
-// Interestingly, we should not actually need to read all of the commands
-// into memory before we start executing them.
-// TODO: consider modifying this to return a channel.
-func Parse(input io.Reader) ([]DatalogCommand, error) {
+// Scan iterates through a io reader, throwing commands into a channel as
+// they are read from the reader.
+func Scan(input io.Reader) (chan DatalogCommand, chan error) {
+
+	commands := make(chan DatalogCommand, 1000)
+	errors := make(chan error)
+
 	s := newScanner(input)
-	return s.scanCommands()
+
+	go func() {
+		for {
+			c, finished, err := s.scanOneCommand()
+			if err != nil {
+				errors <- err
+				break
+			}
+			if finished {
+				break
+			}
+
+			commands <- c
+		}
+		close(errors)
+		close(commands)
+	}()
+	return commands, errors
 }
 
 // Should we instead write commands back to disk,

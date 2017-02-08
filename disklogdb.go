@@ -1,8 +1,6 @@
 package gotalog
 
-import (
-	"io"
-)
+import "io"
 
 type disklogdb struct {
 	w       io.Writer
@@ -31,16 +29,29 @@ func (db *disklogdb) retract(c clause) error {
 }
 
 // NewDiskLogDB returns a database initialized from an io.ReadWritter. All assertions
-// and retractions on this databased will be written to the log.
+// and retractions on this databased will be persisted in the log.
 func NewDiskLogDB(rw io.ReadWriter, backing Database) (Database, error) {
-	commands, err := Parse(rw)
-	if err != nil {
-		return nil, err
+	ch := make(chan DatalogCommand, 1000)
+	go func() {
+		for c := range ch {
+			_, err := Apply(c, backing)
+			if err != nil {
+				// TODO
+			}
+		}
+	}()
+	commands, errors := Scan(rw)
+	for command := range commands {
+		_, err := Apply(command, backing)
+		if err != nil {
+			return nil, err
+		}
 	}
-	// Discard results -- this should be empty anyway.
-	_, err = ApplyAll(commands, backing)
-	if err != nil {
-		return nil, err
+	select {
+	case err := <-errors:
+		if err != nil {
+			return nil, err
+		}
 	}
 	return &disklogdb{w: rw, backing: backing}, nil
 }

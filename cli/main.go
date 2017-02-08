@@ -16,17 +16,30 @@ func main() {
 			continue
 		}
 		f, err := os.Open(filename)
+		defer f.Close()
+
 		if err != nil {
 			panic(err)
 		}
-		cmds, err := gotalog.Parse(f)
-		if err != nil {
-			panic(err)
+		results := make([]gotalog.Result, 0)
+		commands, errors := gotalog.Scan(f)
+		for command := range commands {
+			res, err := gotalog.Apply(command, db)
+			if err != nil {
+				panic(err)
+			}
+			if res != nil {
+				results = append(results, *res)
+			}
 		}
-		results, err := gotalog.ApplyAll(cmds, db)
-		if err != nil {
-			panic(err)
+		select {
+		case err := <-errors:
+			if err != nil {
+				panic(err)
+			}
+		default:
 		}
+
 		fmt.Print(gotalog.ToString(results))
 	}
 

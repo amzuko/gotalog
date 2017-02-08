@@ -44,7 +44,9 @@ func buildLiteral(ml makeLiteral, db Database) literal {
 	}
 }
 
-func apply(cmd DatalogCommand, db Database) (*Result, error) {
+// Apply applies a single command.
+// TODO: do we really need this and ApplyAll?
+func Apply(cmd DatalogCommand, db Database) (*Result, error) {
 	head := buildLiteral(cmd.head, db)
 	switch cmd.commandType {
 	case assert:
@@ -58,8 +60,8 @@ func apply(cmd DatalogCommand, db Database) (*Result, error) {
 		})
 		return nil, err
 	case query:
-		res, err := ask(head)
-		return &res, err
+		res := ask(head)
+		return &res, nil
 	case retract:
 		body := make([]literal, len(cmd.body))
 		for i, ml := range cmd.body {
@@ -85,7 +87,7 @@ type Result struct {
 // on a provided database, and accumulates and then returns results.
 func ApplyAll(cmds []DatalogCommand, db Database) (results []Result, err error) {
 	for _, cmd := range cmds {
-		res, err := apply(cmd, db)
+		res, err := Apply(cmd, db)
 		if err != nil {
 			return results, err
 		}

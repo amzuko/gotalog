@@ -3,7 +3,6 @@ package gotalog
 import (
 	"bufio"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -28,7 +27,7 @@ func TestAsk(t *testing.T) {
 	}
 
 	X := makeVar("X")
-	results, err := ask(literal{parent, []term{abby, X}})
+	results := ask(literal{parent, []term{abby, X}})
 
 	if len(results.Answers) != 2 {
 		t.Fail()
@@ -51,7 +50,7 @@ func TestAsk(t *testing.T) {
 		t.Error(err)
 	}
 
-	results, err = ask(literal{sibling, []term{X, Y}})
+	results = ask(literal{sibling, []term{X, Y}})
 	if err != nil {
 		t.Error(err)
 	}
@@ -187,42 +186,32 @@ path(d, d).
 	},
 }
 
+func compareDatalogResult(t *testing.T, result string, expected string) {
+	if len(result) != len(expected) {
+		t.Errorf("Different string lengths. Got:\n%v\nExpected:\n%v\n", result, expected)
+	}
+	r := bufio.NewReader(strings.NewReader(result))
+	for {
+		b, _, _ := r.ReadLine()
+		if b == nil {
+			break
+		}
+		s := string(b)
+		if !strings.Contains(expected, s) {
+			t.Errorf("unexpected solution %s", s)
+		}
+	}
+}
+
 func interfaceTest(t *testing.T, newDB func() Database) {
 	for _, pCase := range programCases {
 		result := parseApplyExecute(t, pCase.prog, newDB())
-		if len(result) != len(pCase.expected) {
-			t.Errorf("Different string lengths. Got:\n%v\nExpected:\n%v\n", result, pCase.expected)
-		}
-		r := bufio.NewReader(strings.NewReader(result))
-		for {
-			b, _, _ := r.ReadLine()
-			if b == nil {
-				break
-			}
-			s := string(b)
-			if !strings.Contains(pCase.expected, s) {
-				t.Errorf("unexpected solution %s", s)
-			}
-		}
+		compareDatalogResult(t, result, pCase.expected)
 	}
 }
 
 func TestMemDBInterface(t *testing.T) {
 	interfaceTest(t, NewMemDatabase)
-}
-
-func TestDiskLogDBInterface(t *testing.T) {
-	interfaceTest(t, func() Database {
-		f, err := ioutil.TempFile("", "logdbtests")
-		if err != nil {
-			panic(err)
-		}
-		db, err := NewDiskLogDB(f, NewMemDatabase())
-		if err != nil {
-			panic(err)
-		}
-		return db
-	})
 }
 
 // These tests come from https://github.com/c-cube/datalog
