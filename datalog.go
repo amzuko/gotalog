@@ -2,8 +2,6 @@ package gotalog
 
 import "strconv"
 
-import "strings"
-
 // Term is an inerface implemented by variables
 // and constants.
 type term struct {
@@ -63,14 +61,6 @@ func predicateID(name string, arity int) string {
 type literal struct {
 	pred  *predicate
 	terms []term
-}
-
-func (l literal) String() string {
-	values := make([]string, len(l.terms))
-	for i, t := range l.terms {
-		values[i] = t.getID()
-	}
-	return l.pred.id + "(" + strings.Join(values, ", ") + ")"
 }
 
 func prefixLength(s string) string {
@@ -304,17 +294,6 @@ func (t term) isSafe(c *clause) bool {
 
 type goals map[string]*subgoal
 
-func (g goals) String() string {
-	if len(g) == 0 {
-		return "Empty goals."
-	}
-	s := "Goals: \n"
-	for k, v := range g {
-		s = s + k + ": " + v.String() + "\n"
-	}
-	return s
-}
-
 // A subgoal is the item tabled by out solving algorithm.
 // A subgoals
 type subgoal struct {
@@ -328,24 +307,6 @@ func newSubGoal(l literal) *subgoal {
 		literal: l,
 		facts:   make(map[string]literal),
 	}
-}
-
-func (sg subgoal) String() string {
-	s := ""
-	s = s + sg.literal.String() + "\n"
-
-	if len(sg.facts) > 0 {
-		s = s + "Facts:\n"
-		values := make([]string, 0)
-		for _, v := range sg.facts {
-			values = append(values, v.String())
-		}
-		s = s + strings.Join(values, "\n")
-	} else {
-		s = s + "No facts."
-	}
-	s = s + strconv.Itoa(len(sg.waiters)) + " waiters"
-	return s
 }
 
 type waiter struct {
