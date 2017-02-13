@@ -4,18 +4,16 @@ import "fmt"
 
 type memClauseStore map[string]*clause
 
-func (mem memClauseStore) add(c *clause) error {
+func (mem memClauseStore) add(c *clause) {
 	mem[c.getID()] = c
-	return nil
 }
 
-func (mem memClauseStore) delete(c *clause) error {
+func (mem memClauseStore) delete(c *clause) {
 	delete(mem, c.getID())
-	return nil
 }
 
-func (mem memClauseStore) size() (int, error) {
-	return len(mem), nil
+func (mem memClauseStore) size() int {
+	return len(mem)
 }
 
 func (mem memClauseStore) clauses() []*clause {
@@ -67,15 +65,6 @@ func (db *memDatabase) newPredicate(n string, a int) *predicate {
 	return p
 }
 
-func (db *memDatabase) insert(pred *predicate) {
-	db.predicates[pred.id] = pred
-}
-
-func (db *memDatabase) remove(pred predicate) predicate {
-	delete(db.predicates, pred.id)
-	return pred
-}
-
 // assertions should only be made for clauses' whose
 // predicates originate within the same database.
 func (db memDatabase) assert(c *clause) error {
@@ -89,26 +78,18 @@ func (db memDatabase) assert(c *clause) error {
 		return fmt.Errorf("cannot assert on primitive predicates")
 	}
 
-	return db.clauses[pred.id].add(c)
+	db.clauses[pred.id].add(c)
+	return nil
 }
 
 func (db memDatabase) retract(c *clause) error {
 	pred := c.head.pred
-	err := db.clauses[pred.id].delete(c)
-	if err != nil {
-		// This leads to garbage in the predicate's database.
-		return err
-	}
+	db.clauses[pred.id].delete(c)
 
 	// If a predicate has no clauses associated with it, remove it from the db.
-	size, err := db.clauses[pred.id].size()
-	if err != nil {
-		// Likewise, we end up with garbage if this happens.
-		return err
-	}
-
-	if size == 0 {
-		db.remove(*pred)
+	if db.clauses[pred.id].size() == 0 {
+		delete(db.predicates, pred.id)
+		delete(db.clauses, pred.id)
 	}
 	return nil
 }
