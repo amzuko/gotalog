@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -208,6 +209,7 @@ func interfaceTest(t *testing.T, newDB func() Database) {
 		result := parseApplyExecute(t, pCase.prog, newDB())
 		compareDatalogResult(t, result, pCase.expected)
 	}
+	testAllFiles(t, newDB)
 }
 
 func TestMemDBInterface(t *testing.T) {
@@ -223,7 +225,7 @@ var files = []string{
 	"tests/clique1000.pl",
 }
 
-func checkFile(filename string) error {
+func checkFile(filename string, newDB func() Database) error {
 	f, err := os.Open(filename)
 	if err != nil {
 		return err
@@ -232,7 +234,7 @@ func checkFile(filename string) error {
 	if err != nil {
 		return err
 	}
-	db := NewMemDatabase()
+	db := newDB()
 	results, err := ApplyAll(cmds, db)
 	if err != nil {
 		return err
@@ -246,26 +248,41 @@ func checkFile(filename string) error {
 	return nil
 }
 
-func TestFiles(t *testing.T) {
+func testAllFiles(t *testing.T, newDB func() Database) {
 	if testing.Short() {
 		t.SkipNow()
 	}
 	for _, filename := range files {
-		err := checkFile(filename)
+		err := checkFile(filename, newDB)
 		if err != nil {
 			t.Error(err)
 		}
 	}
 }
 
-func BenchmarkClique(b *testing.B) {
+func BenchmarkCliqueMemDB(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		checkFile("tests/clique100.pl")
+		checkFile("tests/clique100.pl", NewMemDatabase)
 	}
 }
 
-func BenchmarkInduction(b *testing.B) {
+func BenchmarkInductionMemDB(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		checkFile("tests/induction100.pl")
+		checkFile("tests/induction100.pl", NewMemDatabase)
 	}
+}
+
+func concurrencyTests(t *testing.T, db Database) {
+	query := func(wg *sync.WaitGroup) {
+		for i := 0; i < 20; i++ {
+			checkFile("tests/clique100.pl", func() Database { return db })
+		}
+		wg.Done()
+	}
+	wg := sync.WaitGroup{}
+	wg.Add(10)
+	for i := 0; i < 10; i++ {
+		go query(&wg)
+	}
+	wg.Wait()
 }
