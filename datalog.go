@@ -353,13 +353,6 @@ type waiter struct {
 	goal *subgoal
 }
 
-func (g goals) find(l literal) *subgoal {
-	if sg, ok := g[l.getTag()]; ok {
-		return sg
-	}
-	return nil
-}
-
 func (g goals) merge(sg *subgoal) {
 	g[sg.literal.getTag()] = sg
 }
@@ -397,22 +390,14 @@ func (g goals) fact(sg *subgoal, l literal) {
 }
 
 func (g goals) rule(subgoal *subgoal, c *clause, selected literal) {
-	sg := g.find(selected)
-	if sg != nil {
+	if sg, ok := g[selected.getTag()]; ok {
 		sg.waiters = append(sg.waiters, waiter{goal: subgoal, c: c})
-		todo := make([]*clause, 0)
 		for _, fact := range sg.facts {
 			resolvent := resolve(c, fact)
 			if resolvent != nil {
-				todo = append(todo, resolvent)
+				g.addClause(subgoal, resolvent)
 			}
 		}
-		// TODO: understand why this can't be a part of the above
-		// for loop, and write a test that breaks if it changes.
-		for _, todoClause := range todo {
-			g.addClause(subgoal, todoClause)
-		}
-
 	} else {
 		sg := newSubGoal(selected)
 		sg.waiters = []waiter{waiter{goal: subgoal, c: c}}
