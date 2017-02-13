@@ -17,11 +17,11 @@ func TestAsk(t *testing.T) {
 	bob := makeConst("bob")
 	charlie := makeConst("charlie")
 
-	err := db.assert(clause{head: literal{parent, []term{abby, bob}}})
+	err := db.assert(&clause{head: literal{parent, []term{abby, bob}}})
 	if err != nil {
 		t.Error(err)
 	}
-	err = db.assert(clause{head: literal{parent, []term{abby, charlie}}})
+	err = db.assert(&clause{head: literal{parent, []term{abby, charlie}}})
 	if err != nil {
 		t.Error(err)
 	}
@@ -37,7 +37,7 @@ func TestAsk(t *testing.T) {
 	Y := makeVar("Y")
 	Z := makeVar("Z")
 
-	areSiblings := clause{
+	areSiblings := &clause{
 		head: literal{sibling, []term{X, Y}},
 		body: []literal{
 			{parent, []term{Z, X}},

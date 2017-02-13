@@ -42,7 +42,7 @@ func testPersistence(t *testing.T, c pCase) {
 	results, err := ApplyAll(commands[0:len(commands)-2], db)
 	panicOnError(err)
 
-	// Close and reopen the
+	// Close and reopen the file
 	f.Close()
 	f, err = os.OpenFile(fname, os.O_RDWR, 0777)
 	panicOnError(err)

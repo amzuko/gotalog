@@ -12,8 +12,8 @@ import (
 // for clarity.
 type Database interface {
 	newPredicate(n string, a int) *predicate
-	assert(c clause) error
-	retract(c clause) error
+	assert(c *clause) error
+	retract(c *clause) error
 }
 
 // TODO: consider whether this should actually be the public API,
@@ -54,7 +54,7 @@ func Apply(cmd DatalogCommand, db Database) (*Result, error) {
 		for i, ml := range cmd.body {
 			body[i] = buildLiteral(ml, db)
 		}
-		err := db.assert(clause{
+		err := db.assert(&clause{
 			head: head,
 			body: body,
 		})
@@ -67,7 +67,7 @@ func Apply(cmd DatalogCommand, db Database) (*Result, error) {
 		for i, ml := range cmd.body {
 			body[i] = buildLiteral(ml, db)
 		}
-		db.retract(clause{
+		db.retract(&clause{
 			head: head,
 			body: body,
 		}) // really, no errors can happen?

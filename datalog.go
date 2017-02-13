@@ -51,7 +51,7 @@ type envirionment map[string]term
 type predicate struct {
 	Name      string
 	Arity     int
-	clauses   func() []clause
+	clauses   func() []*clause
 	primitive func(literal, *subgoal) []literal
 	id        string
 }
@@ -252,7 +252,7 @@ func (c *clause) getID() string {
 }
 
 // Apply a given substitition for each literal.
-func substituteInClause(c clause, env envirionment) clause {
+func substituteInClause(c *clause, env envirionment) *clause {
 	if len(env) == 0 {
 		return c
 	}
@@ -260,13 +260,13 @@ func substituteInClause(c clause, env envirionment) clause {
 	for i, l := range c.body {
 		newBody[i] = substitute(l, env)
 	}
-	return clause{
+	return &clause{
 		head: substitute(c.head, env),
 		body: newBody,
 	}
 }
 
-func renameClause(c clause) clause {
+func renameClause(c *clause) *clause {
 	env := envirionment{}
 	for _, l := range c.body {
 		env = shuffle(l, env)
@@ -281,7 +281,7 @@ func renameClause(c clause) clause {
 // This is a key distinction between prolog and datalog, and along with
 // the lack of negation, allows us to garuntee that datalog programs
 // will terminate.
-func isSafe(c clause) bool {
+func isSafe(c *clause) bool {
 	for _, t := range c.head.terms {
 		if !t.isSafe(c) {
 			return false
@@ -290,7 +290,7 @@ func isSafe(c clause) bool {
 	return true
 }
 
-func (t term) isSafe(c clause) bool {
+func (t term) isSafe(c *clause) bool {
 	if t.isConstant {
 		return true
 	}
@@ -442,7 +442,7 @@ func (g goals) search(sg *subgoal) error {
 		env := unify(l, renamed.head)
 		if env != nil {
 			substituted := substituteInClause(renamed, env)
-			g.addClause(sg, &substituted)
+			g.addClause(sg, substituted)
 		}
 	}
 	return nil

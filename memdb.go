@@ -2,14 +2,14 @@ package gotalog
 
 import "fmt"
 
-type memClauseStore map[string]clause
+type memClauseStore map[string]*clause
 
-func (mem memClauseStore) add(c clause) error {
+func (mem memClauseStore) add(c *clause) error {
 	mem[c.getID()] = c
 	return nil
 }
 
-func (mem memClauseStore) delete(c clause) error {
+func (mem memClauseStore) delete(c *clause) error {
 	delete(mem, c.getID())
 	return nil
 }
@@ -18,10 +18,12 @@ func (mem memClauseStore) size() (int, error) {
 	return len(mem), nil
 }
 
-func (mem memClauseStore) clauses() []clause {
-	clauses := make([]clause, 0, len(mem))
+func (mem memClauseStore) clauses() []*clause {
+	clauses := make([]*clause, len(mem))
+	i := 0
 	for _, c := range mem {
-		clauses = append(clauses, c)
+		clauses[i] = c
+		i = i + 1
 	}
 	return clauses
 
@@ -56,7 +58,7 @@ func (db *memDatabase) newPredicate(n string, a int) *predicate {
 		id:        id,
 	}
 
-	p.clauses = func() []clause {
+	p.clauses = func() []*clause {
 		return db.clauses[p.id].clauses()
 	}
 
@@ -76,7 +78,7 @@ func (db *memDatabase) remove(pred predicate) predicate {
 
 // assertions should only be made for clauses' whose
 // predicates originate within the same database.
-func (db memDatabase) assert(c clause) error {
+func (db memDatabase) assert(c *clause) error {
 	if !isSafe(c) {
 		return fmt.Errorf("cannot assert unsafe clauses")
 	}
@@ -90,7 +92,7 @@ func (db memDatabase) assert(c clause) error {
 	return db.clauses[pred.id].add(c)
 }
 
-func (db memDatabase) retract(c clause) error {
+func (db memDatabase) retract(c *clause) error {
 	pred := c.head.pred
 	err := db.clauses[pred.id].delete(c)
 	if err != nil {

@@ -11,21 +11,21 @@ func (db *disklogdb) newPredicate(n string, a int) *predicate {
 	return db.backing.newPredicate(n, a)
 }
 
-func (db *disklogdb) assert(c clause) error {
+func (db *disklogdb) assert(c *clause) error {
 	// what happens if one fails and one succeeds?
 	err := db.backing.assert(c)
 	if err != nil {
 		return err
 	}
-	return writeClause(db.w, &c, assert)
+	return writeClause(db.w, c, assert)
 }
 
-func (db *disklogdb) retract(c clause) error {
+func (db *disklogdb) retract(c *clause) error {
 	err := db.backing.retract(c)
 	if err != nil {
 		return err
 	}
-	return writeClause(db.w, &c, retract)
+	return writeClause(db.w, c, retract)
 }
 
 // NewDiskLogDB returns a database initialized from an io.ReadWritter. All assertions
