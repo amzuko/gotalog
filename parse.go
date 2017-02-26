@@ -40,14 +40,14 @@ func isTerminal(ch rune) bool {
 	return ch == '?' || ch == '.' || ch == '~'
 }
 
-func commandForTerminal(ch rune) commandType {
+func commandForTerminal(ch rune) CommandType {
 	switch ch {
 	case '.':
-		return assert
+		return Assert
 	case '?':
-		return query
+		return Query
 	case '~':
-		return retract
+		return Retract
 	default:
 		panic("invalid terminal rune.")
 	}
@@ -113,7 +113,7 @@ func (s scanner) scanIdentifier() (str string, err error) {
 	}
 }
 
-func (s scanner) scanTerm() (t term, err error) {
+func (s scanner) scanTerm() (t Term, err error) {
 
 	t.value, err = s.scanIdentifier()
 	if err != nil {
@@ -127,14 +127,14 @@ func (s scanner) scanTerm() (t term, err error) {
 	return
 }
 
-func (s scanner) scanLiteral() (lit makeLiteral, err error) {
+func (s scanner) scanLiteral() (lit LiteralDefinition, err error) {
 	name, err := s.scanIdentifier()
 	if err != nil {
 		return
 	}
 
-	lit = makeLiteral{
-		pName: name,
+	lit = LiteralDefinition{
+		PredicateName: name,
 	}
 
 	s.consumeWhitespace()
@@ -161,7 +161,7 @@ func (s scanner) scanLiteral() (lit makeLiteral, err error) {
 		if err != nil {
 			return lit, err
 		}
-		lit.terms = append(lit.terms, t)
+		lit.Terms = append(lit.Terms, t)
 
 		s.consumeWhitespace()
 
@@ -181,7 +181,7 @@ func (s scanner) scanLiteral() (lit makeLiteral, err error) {
 
 func (s scanner) scanCommand() (cmd DatalogCommand, err error) {
 	s.consumeWhitespace()
-	cmd.head, err = s.scanLiteral()
+	cmd.Head, err = s.scanLiteral()
 	if err != nil {
 		return
 	}
@@ -193,7 +193,7 @@ func (s scanner) scanCommand() (cmd DatalogCommand, err error) {
 	}
 
 	if isTerminal(ch) {
-		cmd.commandType = commandForTerminal(ch)
+		cmd.CommandType = commandForTerminal(ch)
 		return
 	}
 
@@ -208,13 +208,13 @@ func (s scanner) scanCommand() (cmd DatalogCommand, err error) {
 	}
 
 	for {
-		var l makeLiteral
+		var l LiteralDefinition
 		s.consumeWhitespace()
 		l, err = s.scanLiteral()
 		if err != nil {
 			return
 		}
-		cmd.body = append(cmd.body, l)
+		cmd.Body = append(cmd.Body, l)
 
 		s.consumeWhitespace()
 
@@ -247,47 +247,11 @@ func (s scanner) scanOneCommand() (DatalogCommand, bool, error) {
 	return c, false, err
 }
 
-// Parse consumes a reader, producing a slice of datalogCommands.
-func Parse(input io.Reader) ([]DatalogCommand, error) {
-	s := newScanner(input)
-
-	commands := make([]DatalogCommand, 0)
-
-	for {
-		c, finished, err := s.scanOneCommand()
-		if err != nil || finished {
-			return commands, err
-		}
-		commands = append(commands, c)
+func buildLiteral(ml LiteralDefinition, db Database) literal {
+	return literal{
+		pred:  db.newPredicate(ml.PredicateName, len(ml.Terms)),
+		terms: ml.Terms,
 	}
-}
-
-// Scan iterates through a io reader, throwing commands into a channel as
-// they are read from the reader.
-func Scan(input io.Reader) (chan DatalogCommand, chan error) {
-
-	commands := make(chan DatalogCommand, 1000)
-	errors := make(chan error)
-
-	s := newScanner(input)
-
-	go func() {
-		for {
-			c, finished, err := s.scanOneCommand()
-			if err != nil {
-				errors <- err
-				break
-			}
-			if finished {
-				break
-			}
-
-			commands <- c
-		}
-		close(errors)
-		close(commands)
-	}()
-	return commands, errors
 }
 
 // Should we instead write commands back to disk,
@@ -320,7 +284,7 @@ func writeLiteral(w io.Writer, l *literal) error {
 	return nil
 }
 
-func writeClause(w io.Writer, c *clause, t commandType) error {
+func writeClause(w io.Writer, c *clause, t CommandType) error {
 	err := writeLiteral(w, &c.head)
 	if err != nil {
 		return err
@@ -341,11 +305,11 @@ func writeClause(w io.Writer, c *clause, t commandType) error {
 		}
 	}
 	switch t {
-	case assert:
+	case Assert:
 		_, err = io.WriteString(w, ".\n")
-	case query:
+	case Query:
 		_, err = io.WriteString(w, "?\n")
-	case retract:
+	case Retract:
 		_, err = io.WriteString(w, "~\n")
 	}
 	return err

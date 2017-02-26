@@ -17,7 +17,7 @@ func (db *disklogdb) assert(c *clause) error {
 	if err != nil {
 		return err
 	}
-	return writeClause(db.w, c, assert)
+	return writeClause(db.w, c, Assert)
 }
 
 func (db *disklogdb) retract(c *clause) error {
@@ -25,7 +25,7 @@ func (db *disklogdb) retract(c *clause) error {
 	if err != nil {
 		return err
 	}
-	return writeClause(db.w, c, retract)
+	return writeClause(db.w, c, Retract)
 }
 
 // NewDiskLogDB returns a database initialized from an io.ReadWritter. All assertions

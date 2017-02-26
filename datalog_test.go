@@ -18,17 +18,17 @@ func TestAsk(t *testing.T) {
 	bob := makeConst("bob")
 	charlie := makeConst("charlie")
 
-	err := db.assert(&clause{head: literal{parent, []term{abby, bob}}})
+	err := db.assert(&clause{head: literal{parent, []Term{abby, bob}}})
 	if err != nil {
 		t.Error(err)
 	}
-	err = db.assert(&clause{head: literal{parent, []term{abby, charlie}}})
+	err = db.assert(&clause{head: literal{parent, []Term{abby, charlie}}})
 	if err != nil {
 		t.Error(err)
 	}
 
 	X := makeVar("X")
-	results := ask(literal{parent, []term{abby, X}})
+	results := ask(literal{parent, []Term{abby, X}})
 
 	if len(results.Answers) != 2 {
 		t.Fail()
@@ -39,10 +39,10 @@ func TestAsk(t *testing.T) {
 	Z := makeVar("Z")
 
 	areSiblings := &clause{
-		head: literal{sibling, []term{X, Y}},
+		head: literal{sibling, []Term{X, Y}},
 		body: []literal{
-			{parent, []term{Z, X}},
-			{parent, []term{Z, Y}},
+			{parent, []Term{Z, X}},
+			{parent, []Term{Z, Y}},
 		},
 	}
 
@@ -51,7 +51,7 @@ func TestAsk(t *testing.T) {
 		t.Error(err)
 	}
 
-	results = ask(literal{sibling, []term{X, Y}})
+	results = ask(literal{sibling, []Term{X, Y}})
 	if err != nil {
 		t.Error(err)
 	}

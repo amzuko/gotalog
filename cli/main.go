@@ -1,9 +1,8 @@
 package main
 
 import (
-	"os"
-
 	"fmt"
+	"os"
 
 	"../../gotalog"
 )

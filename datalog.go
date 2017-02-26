@@ -2,25 +2,15 @@ package gotalog
 
 import "strconv"
 
-// Term is an inerface implemented by variables
-// and constants.
-type term struct {
-	isConstant bool
-	// If term is a constant, value is the constant value.
-	// If term is not a constant (ie, is a variable), value contains
-	// the variable's id.
-	value string
-}
-
-func (t term) getID() string {
+func (t Term) getID() string {
 	if t.isConstant {
 		return "c" + t.value
 	}
 	return "v" + t.value
 }
 
-func makeVar(id string) term {
-	return term{
+func makeVar(id string) Term {
+	return Term{
 		isConstant: false,
 		value:      id,
 	}
@@ -29,20 +19,20 @@ func makeVar(id string) term {
 // Not threadsafe. TODO.
 var globalFreshVarState = 0
 
-func makeFreshVar() term {
+func makeFreshVar() Term {
 	id := strconv.Itoa(globalFreshVarState)
 	globalFreshVarState = globalFreshVarState + 1
 	return makeVar(id)
 }
 
-func makeConst(value string) term {
-	return term{
+func makeConst(value string) Term {
+	return Term{
 		isConstant: true,
 		value:      value,
 	}
 }
 
-type envirionment map[string]term
+type envirionment map[string]Term
 
 // Predicate has name, arity, and optionally
 // a function implementing a primitive
@@ -60,7 +50,7 @@ func predicateID(name string, arity int) string {
 
 type literal struct {
 	pred  *predicate
-	terms []term
+	terms []Term
 }
 
 func prefixLength(s string) string {
@@ -87,7 +77,7 @@ func (l *literal) getID() string {
 
 // TODO:cache in the literal
 func (l literal) getTag() string {
-	mapping := make(map[term]string)
+	mapping := make(map[Term]string)
 	tag := prefixLength(l.pred.id)
 	for i, t := range l.terms {
 		tag = tag + prefixLength(t.getTag(i, mapping))
@@ -95,7 +85,7 @@ func (l literal) getTag() string {
 	return tag
 }
 
-func (t term) getTag(i int, mapping map[term]string) string {
+func (t Term) getTag(i int, mapping map[Term]string) string {
 	if t.isConstant {
 		return "ct" + t.value
 	}
@@ -109,7 +99,7 @@ func substitute(l literal, env envirionment) literal {
 	if len(env) == 0 {
 		return l
 	}
-	newTerms := make([]term, len(l.terms))
+	newTerms := make([]Term, len(l.terms))
 	for i, t := range l.terms {
 		newTerms[i] = t.substitute(env)
 	}
@@ -119,7 +109,7 @@ func substitute(l literal, env envirionment) literal {
 	}
 }
 
-func (t term) substitute(env envirionment) term {
+func (t Term) substitute(env envirionment) Term {
 	if t.isConstant {
 		return t
 	}
@@ -139,7 +129,7 @@ func shuffle(l literal, env envirionment) envirionment {
 }
 
 // Mutate env
-func (t term) shuffle(env envirionment) {
+func (t Term) shuffle(env envirionment) {
 	if !t.isConstant {
 		env[t.value] = makeFreshVar()
 	}
@@ -174,7 +164,7 @@ func unify(l literal, other literal) envirionment {
 	return env
 }
 
-func (t term) chase(env envirionment) term {
+func (t Term) chase(env envirionment) Term {
 	if t.isConstant {
 		return t
 	}
@@ -184,7 +174,7 @@ func (t term) chase(env envirionment) term {
 	return t
 }
 
-func (t term) unify(other term, env envirionment) envirionment {
+func (t Term) unify(other Term, env envirionment) envirionment {
 	// TODO should move the check for aboslute equality here?
 	if t.isConstant && other.isConstant {
 		return nil
@@ -196,7 +186,7 @@ func (t term) unify(other term, env envirionment) envirionment {
 	return env
 }
 
-func isIn(t term, l literal) bool {
+func isIn(t Term, l literal) bool {
 	for _, ti := range l.terms {
 		if ti == t {
 			return true
@@ -280,7 +270,7 @@ func isSafe(c *clause) bool {
 	return true
 }
 
-func (t term) isSafe(c *clause) bool {
+func (t Term) isSafe(c *clause) bool {
 	if t.isConstant {
 		return true
 	}
@@ -401,7 +391,7 @@ func ask(l literal) Result {
 	subgoals.search(sg)
 
 	if len(sg.facts) > 0 {
-		answers := make([][]term, 0)
+		answers := make([][]Term, 0)
 		for _, l := range sg.facts {
 			answers = append(answers, l.terms)
 		}

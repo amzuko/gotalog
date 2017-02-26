@@ -2,56 +2,106 @@ package gotalog
 
 import (
 	"fmt"
+	"io"
 	"strings"
 )
 
 // Database holds and generates state for asserted facts and rules.
 // We're mirroring the original implementation's use of 'database'. Unfortunately,
 // this was used to describe a number of different uses for tables mapping From
-// some string id to some type. TODO: consider renaming other uses of 'database'
-// for clarity.
+// some string id to some type in the original implementation.
 type Database interface {
 	newPredicate(n string, a int) *predicate
 	assert(c *clause) error
 	retract(c *clause) error
 }
 
-// TODO: consider whether this should actually be the public API,
-// rather than the assert/search api?
-type makeLiteral struct {
-	pName string
-	terms []term
+// Term contains either a variable or a constant.
+type Term struct {
+	isConstant bool
+	// If term is a constant, value is the constant value.
+	// If term is not a constant (ie, is a variable), value contains
+	// the variable's id.
+	value string
 }
-type commandType int
+
+// LiteralDefinition defines a literal PredicateName(Term0, Term1, ...).
+type LiteralDefinition struct {
+	PredicateName string
+	Terms         []Term
+}
+
+// CommandType differentiates different possible datalog commands.
+type CommandType int
 
 const (
-	assert commandType = iota
-	query
-	retract
+	// Assert - this fact will be added to a database upon application.
+	Assert CommandType = iota
+	// Query - this command will return the results of querying a database
+	// upon application.
+	Query
+	// Retract - remove a fact from a database.
+	Retract
 )
 
 // DatalogCommand a command to mutate or query a gotalog database.
 type DatalogCommand struct {
-	head        makeLiteral
-	body        []makeLiteral
-	commandType commandType
+	Head        LiteralDefinition
+	Body        []LiteralDefinition
+	CommandType CommandType
 }
 
-func buildLiteral(ml makeLiteral, db Database) literal {
-	return literal{
-		pred:  db.newPredicate(ml.pName, len(ml.terms)),
-		terms: ml.terms,
+// Parse consumes a reader, producing a slice of datalogCommands.
+func Parse(input io.Reader) ([]DatalogCommand, error) {
+	s := newScanner(input)
+
+	commands := make([]DatalogCommand, 0)
+
+	for {
+		c, finished, err := s.scanOneCommand()
+		if err != nil || finished {
+			return commands, err
+		}
+		commands = append(commands, c)
 	}
+}
+
+// Scan iterates through a io reader, throwing commands into a channel as
+// they are read from the reader.
+func Scan(input io.Reader) (chan DatalogCommand, chan error) {
+
+	commands := make(chan DatalogCommand, 1000)
+	errors := make(chan error)
+
+	s := newScanner(input)
+
+	go func() {
+		for {
+			c, finished, err := s.scanOneCommand()
+			if err != nil {
+				errors <- err
+				break
+			}
+			if finished {
+				break
+			}
+
+			commands <- c
+		}
+		close(errors)
+		close(commands)
+	}()
+	return commands, errors
 }
 
 // Apply applies a single command.
 // TODO: do we really need this and ApplyAll?
 func Apply(cmd DatalogCommand, db Database) (*Result, error) {
-	head := buildLiteral(cmd.head, db)
-	switch cmd.commandType {
-	case assert:
-		body := make([]literal, len(cmd.body))
-		for i, ml := range cmd.body {
+	head := buildLiteral(cmd.Head, db)
+	switch cmd.CommandType {
+	case Assert:
+		body := make([]literal, len(cmd.Body))
+		for i, ml := range cmd.Body {
 			body[i] = buildLiteral(ml, db)
 		}
 		err := db.assert(&clause{
@@ -59,12 +109,12 @@ func Apply(cmd DatalogCommand, db Database) (*Result, error) {
 			body: body,
 		})
 		return nil, err
-	case query:
+	case Query:
 		res := ask(head)
 		return &res, nil
-	case retract:
-		body := make([]literal, len(cmd.body))
-		for i, ml := range cmd.body {
+	case Retract:
+		body := make([]literal, len(cmd.Body))
+		for i, ml := range cmd.Body {
 			body[i] = buildLiteral(ml, db)
 		}
 		db.retract(&clause{
@@ -80,7 +130,7 @@ func Apply(cmd DatalogCommand, db Database) (*Result, error) {
 type Result struct {
 	Name    string
 	Arity   int
-	Answers [][]term
+	Answers [][]Term
 }
 
 // ApplyAll iterates over a slice of commands, executes each in turn
